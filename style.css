@@ -133,16 +133,15 @@ html, body {
 .dot.correct { background: var(--green); }
 .dot.wrong   { background: var(--wrong); }
 
-/* ── IMAGE: flex로 남은 공간 채우되 너무 커지지 않게 ── */
+/* ── IMAGE: 고정 높이 — 절대 짤리지 않음 ── */
 .img-box {
   width: 100%;
   border-radius: 12px;
   overflow: hidden;
   background: #F0E6D8;
   margin-bottom: 8px;
-  flex: 1;
-  min-height: 0;
-  max-height: 28vh;
+  flex-shrink: 0;
+  height: 20vh;
   display: flex;
   align-items: center;
 }
@@ -174,7 +173,7 @@ html, body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
   flex-shrink: 0;
 }
 .choice-btn {
@@ -182,8 +181,8 @@ html, body {
   background: var(--card);
   border: 2px solid var(--border);
   border-radius: 10px;
-  padding: 12px 14px;
-  font-size: 15px;
+  padding: 10px 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
   text-align: left;
