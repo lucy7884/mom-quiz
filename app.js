@@ -3,7 +3,7 @@ let allQuestions = [];
 let todayQuestions = [];
 let currentIndex = 0;
 let score = 0;
-let answerLog = []; // true/false per question
+let answerLog = [];
 
 // ── SCREENS ────────────────────────────────────────────
 function showScreen(id) {
@@ -28,21 +28,95 @@ function saveState(s) {
   localStorage.setItem('sajaState', JSON.stringify(s));
 }
 
+// ── CSV PARSER ─────────────────────────────────────────
+// 큰따옴표로 감싼 필드, 줄바꿈 포함 셀 모두 처리
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      if (inQuotes && text[i + 1] === '"') { field += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (c === ',' && !inQuotes) {
+      row.push(field); field = '';
+    } else if (c === '\r' && !inQuotes) {
+      // skip
+    } else if (c === '\n' && !inQuotes) {
+      row.push(field); field = '';
+      rows.push(row); row = [];
+    } else {
+      field += c;
+    }
+  }
+  if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+
+  // 헤더 제거 후 Question 객체로 변환
+  // 컬럼 순서: 사자성어 | 한자 | 이미지URL | 문제 | 정답 | 오답1 | 오답2 | 뜻 | 유래스토리
+  return rows.slice(1)
+    .filter(r => r[0] && r[0].trim())
+    .map((r, idx) => ({
+      id: 1000 + idx,
+      idiom:    r[0]?.trim() || '',
+      chinese:  r[1]?.trim() || '',
+      image:    r[2]?.trim() || '',
+      question: r[3]?.trim() || '',
+      choices:  [r[4]?.trim() || '', r[5]?.trim() || '', r[6]?.trim() || ''],
+      answer:   0,  // E열이 항상 정답
+      meaning:  r[7]?.trim() || '',
+      story:    r[8]?.trim() || ''
+    }));
+}
+
+// ── LOAD QUESTIONS ─────────────────────────────────────
+async function loadQuestions() {
+  // 1. config.json 에서 구글 시트 URL 읽기
+  try {
+    const cfgRes = await fetch('config.json');
+    const cfg = await cfgRes.json();
+
+    if (cfg.sheetUrl && cfg.sheetUrl.trim() !== '') {
+      const csvRes = await fetch(cfg.sheetUrl.trim());
+      const csvText = await csvRes.text();
+      const sheetQuestions = parseCSV(csvText);
+      if (sheetQuestions.length > 0) {
+        allQuestions = sheetQuestions;
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn('구글 시트 로드 실패, 기본 문제를 사용해요:', e);
+  }
+
+  // 2. 폴백: questions.json
+  const res = await fetch('questions.json');
+  allQuestions = await res.json();
+}
+
+// ── SHUFFLE CHOICES ────────────────────────────────────
+// 보기 순서를 섞어서 매번 정답 위치가 달라지게 함
+function shuffleChoices(q) {
+  const order = [0, 1, 2].sort(() => Math.random() - 0.5);
+  const correctText = q.choices[q.answer];
+  const newChoices = order.map(i => q.choices[i]);
+  return { ...q, choices: newChoices, answer: newChoices.indexOf(correctText) };
+}
+
 // ── HOME ───────────────────────────────────────────────
 function renderHome() {
   const s = loadState();
   const td = today();
 
-  // streak: count only if last complete was yesterday or today
   let streak = s.streak || 0;
   if (s.lastCompleteDate !== td && s.lastCompleteDate !== yesterday()) streak = 0;
   document.getElementById('streak-count').textContent = streak;
 
-  // today progress
   const count = (s.date === td) ? (s.count || 0) : 0;
   const done  = (s.date === td) && s.done;
-  const pct   = (count / 10) * 100;
-  document.getElementById('home-progress-bar').style.width = pct + '%';
+  document.getElementById('home-progress-bar').style.width = (count / 10 * 100) + '%';
   document.getElementById('home-progress-count').textContent = count + ' / 10';
 
   const btn = document.getElementById('start-btn');
@@ -58,35 +132,35 @@ function renderHome() {
   }
 }
 
-// ── QUESTION SELECTION ─────────────────────────────────
+// ── SELECT TODAY'S QUESTIONS ───────────────────────────
 function selectQuestions() {
   const s = loadState();
   const td = today();
 
-  if (s.date === td && s.questionIds && s.count < 10) {
-    // resume
-    todayQuestions = s.questionIds.map(id => allQuestions.find(q => q.id === id));
+  // 이어하기: 저장된 오늘 문제가 있으면 복원
+  if (s.date === td && s.questionsData && s.count < 10) {
+    todayQuestions = s.questionsData;
     currentIndex   = s.count;
     score          = s.score || 0;
     answerLog      = s.answerLog || [];
     return;
   }
 
-  // new day — shuffle and pick 10
+  // 새 날: 랜덤 10문제 선택 + 보기 섞기
   const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
-  todayQuestions = shuffled.slice(0, 10);
+  todayQuestions = shuffled.slice(0, 10).map(shuffleChoices);
   currentIndex   = 0;
   score          = 0;
   answerLog      = [];
 
   saveState({
     ...s,
-    date:        td,
-    questionIds: todayQuestions.map(q => q.id),
-    count:       0,
-    score:       0,
-    answerLog:   [],
-    done:        false
+    date:          td,
+    questionsData: todayQuestions,
+    count:         0,
+    score:         0,
+    answerLog:     [],
+    done:          false
   });
 }
 
@@ -97,11 +171,8 @@ function renderDots() {
   for (let i = 0; i < 10; i++) {
     const d = document.createElement('div');
     d.className = 'dot';
-    if (i < answerLog.length) {
-      d.classList.add(answerLog[i] ? 'correct' : 'wrong');
-    } else if (i === currentIndex) {
-      d.classList.add('current');
-    }
+    if (i < answerLog.length)    d.classList.add(answerLog[i] ? 'correct' : 'wrong');
+    else if (i === currentIndex) d.classList.add('current');
     el.appendChild(d);
   }
 }
@@ -110,7 +181,7 @@ function renderDots() {
 function showQuiz() {
   renderDots();
   const q = todayQuestions[currentIndex];
-  document.getElementById('quiz-current').textContent = currentIndex + 1;
+  document.getElementById('quiz-current').textContent  = currentIndex + 1;
   document.getElementById('quiz-idiom').textContent    = q.idiom;
   document.getElementById('quiz-chinese').textContent  = q.chinese;
   document.getElementById('quiz-question').textContent = q.question;
@@ -132,7 +203,6 @@ function showQuiz() {
     const btn = document.createElement('button');
     btn.className = 'choice-btn';
     btn.textContent = labels[i] + '  ' + text;
-    btn.dataset.idx = i;
     btn.addEventListener('click', () => onAnswer(i));
     choicesEl.appendChild(btn);
   });
@@ -145,17 +215,15 @@ function onAnswer(chosen) {
   const q = todayQuestions[currentIndex];
   const correct = chosen === q.answer;
 
-  // lock buttons and highlight
   document.querySelectorAll('.choice-btn').forEach((btn, i) => {
     btn.disabled = true;
-    if (i === q.answer)             btn.classList.add('correct');
+    if (i === q.answer)                btn.classList.add('correct');
     else if (i === chosen && !correct) btn.classList.add('wrong');
   });
 
   if (correct) score++;
   answerLog.push(correct);
 
-  // persist progress
   const s = loadState();
   s.count     = currentIndex + 1;
   s.score     = score;
@@ -170,18 +238,9 @@ function showAnswer(correct) {
   const q = todayQuestions[currentIndex];
 
   const banner = document.getElementById('result-banner');
-  const icon   = document.getElementById('result-icon');
-  const text   = document.getElementById('result-text');
-
-  if (correct) {
-    banner.className   = 'result-banner correct';
-    icon.textContent   = '🎊';
-    text.textContent   = '정답이에요!';
-  } else {
-    banner.className   = 'result-banner wrong';
-    icon.textContent   = '💪';
-    text.textContent   = '아쉽지만 괜찮아요!';
-  }
+  document.getElementById('result-icon').textContent = correct ? '🎊' : '💪';
+  document.getElementById('result-text').textContent = correct ? '정답이에요!' : '아쉽지만 괜찮아요!';
+  banner.className = 'result-banner ' + (correct ? 'correct' : 'wrong');
 
   const imgBox = document.getElementById('answer-img-box');
   const img    = document.getElementById('answer-image');
@@ -196,25 +255,20 @@ function showAnswer(correct) {
   document.getElementById('answer-idiom').textContent   = q.idiom + '  ' + q.chinese;
   document.getElementById('answer-meaning').textContent = '💡 ' + q.meaning;
   document.getElementById('answer-story').textContent   = q.story;
-
-  const nextBtn = document.getElementById('next-btn');
-  nextBtn.textContent = (currentIndex === 9) ? '결과 보기 🎉' : '다음 문제 →';
+  document.getElementById('next-btn').textContent = (currentIndex === 9) ? '결과 보기 🎉' : '다음 문제 →';
 
   showScreen('screen-answer');
 }
 
 // ── COMPLETE SCREEN ────────────────────────────────────
 function showComplete() {
-  // update streak
   const s  = loadState();
   const td = today();
   let streak = s.streak || 0;
   if (s.lastCompleteDate === yesterday()) streak += 1;
   else if (s.lastCompleteDate !== td)     streak  = 1;
 
-  s.done             = true;
-  s.streak           = streak;
-  s.lastCompleteDate = td;
+  s.done = true; s.streak = streak; s.lastCompleteDate = td;
   saveState(s);
 
   document.getElementById('final-score').textContent  = score;
@@ -227,10 +281,7 @@ function showComplete() {
     [4,  '조금씩 늘고 있어요! 계속해요! 💪'],
     [0,  '내일은 더 잘하실 거예요! 🌱']
   ];
-  const msg = msgs.find(([min]) => score >= min);
-  document.getElementById('score-msg').textContent = msg[1];
-
-  // pick a fun emoji based on score
+  document.getElementById('score-msg').textContent    = msgs.find(([m]) => score >= m)[1];
   document.getElementById('complete-emoji').textContent = score === 10 ? '🏆' : '🎉';
 
   showScreen('screen-complete');
@@ -257,12 +308,7 @@ document.getElementById('home-btn').addEventListener('click', () => {
 
 // ── BOOT ───────────────────────────────────────────────
 (async function init() {
-  try {
-    const res = await fetch('questions.json');
-    allQuestions = await res.json();
-  } catch (e) {
-    console.error('문제를 불러오지 못했어요:', e);
-  }
+  await loadQuestions();
   renderHome();
   showScreen('screen-home');
 })();
