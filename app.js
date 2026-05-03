@@ -29,12 +29,9 @@ function saveState(s) {
 }
 
 // ── CSV PARSER ─────────────────────────────────────────
-// 큰따옴표로 감싼 필드, 줄바꿈 포함 셀 모두 처리
 function parseCSV(text) {
   const rows = [];
-  let row = [];
-  let field = '';
-  let inQuotes = false;
+  let row = [], field = '', inQuotes = false;
 
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
@@ -54,18 +51,17 @@ function parseCSV(text) {
   }
   if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
 
-  // 헤더 제거 후 Question 객체로 변환
-  // 컬럼 순서: 사자성어 | 한자 | 이미지URL | 문제 | 정답 | 오답1 | 오답2 | 뜻 | 유래스토리
+  // 헤더 제거 / 컬럼: 사자성어 | 한자 | 이미지URL | 문제 | 정답 | 오답1 | 오답2 | 뜻 | 유래스토리
   return rows.slice(1)
     .filter(r => r[0] && r[0].trim())
     .map((r, idx) => ({
-      id: 1000 + idx,
+      id:       1000 + idx,
       idiom:    r[0]?.trim() || '',
       chinese:  r[1]?.trim() || '',
       image:    r[2]?.trim() || '',
       question: r[3]?.trim() || '',
       choices:  [r[4]?.trim() || '', r[5]?.trim() || '', r[6]?.trim() || ''],
-      answer:   0,  // E열이 항상 정답
+      answer:   0,
       meaning:  r[7]?.trim() || '',
       story:    r[8]?.trim() || ''
     }));
@@ -73,31 +69,23 @@ function parseCSV(text) {
 
 // ── LOAD QUESTIONS ─────────────────────────────────────
 async function loadQuestions() {
-  // 1. config.json 에서 구글 시트 URL 읽기
   try {
     const cfgRes = await fetch('config.json');
     const cfg = await cfgRes.json();
-
-    if (cfg.sheetUrl && cfg.sheetUrl.trim() !== '') {
+    if (cfg.sheetUrl && cfg.sheetUrl.trim()) {
       const csvRes = await fetch(cfg.sheetUrl.trim());
       const csvText = await csvRes.text();
-      const sheetQuestions = parseCSV(csvText);
-      if (sheetQuestions.length > 0) {
-        allQuestions = sheetQuestions;
-        return;
-      }
+      const sheetQs = parseCSV(csvText);
+      if (sheetQs.length > 0) { allQuestions = sheetQs; return; }
     }
   } catch (e) {
     console.warn('구글 시트 로드 실패, 기본 문제를 사용해요:', e);
   }
-
-  // 2. 폴백: questions.json
   const res = await fetch('questions.json');
   allQuestions = await res.json();
 }
 
 // ── SHUFFLE CHOICES ────────────────────────────────────
-// 보기 순서를 섞어서 매번 정답 위치가 달라지게 함
 function shuffleChoices(q) {
   const order = [0, 1, 2].sort(() => Math.random() - 0.5);
   const correctText = q.choices[q.answer];
@@ -110,57 +98,73 @@ function renderHome() {
   const s = loadState();
   const td = today();
 
+  // 스트릭: 어제 또는 오늘 완료한 경우에만 유지
   let streak = s.streak || 0;
   if (s.lastCompleteDate !== td && s.lastCompleteDate !== yesterday()) streak = 0;
   document.getElementById('streak-count').textContent = streak;
 
-  const count = (s.date === td) ? (s.count || 0) : 0;
-  const done  = (s.date === td) && s.done;
-  document.getElementById('home-progress-bar').style.width = (count / 10 * 100) + '%';
-  document.getElementById('home-progress-count').textContent = count + ' / 10';
+  const isToday = s.date === td;
+  const totalToday = isToday ? (s.totalToday || 0) : 0;
+  const roundNum   = isToday ? (s.roundNum   || 0) : 0;
+
+  document.getElementById('home-progress-count').textContent = totalToday + '문제';
+
+  const roundEl = document.getElementById('home-round-info');
+  if (roundNum > 0) {
+    roundEl.textContent = roundNum + '라운드 완료 🎯';
+  } else {
+    roundEl.textContent = '오늘 처음 도전해봐요!';
+  }
 
   const btn = document.getElementById('start-btn');
-  if (done) {
-    btn.textContent = '오늘은 모두 풀었어요 ✅';
-    btn.disabled = true;
-  } else if (count > 0) {
-    btn.textContent = '이어서 풀기 →';
-    btn.disabled = false;
-  } else {
-    btn.textContent = '오늘의 퀴즈 시작하기';
-    btn.disabled = false;
-  }
+  btn.disabled = false;
+  btn.textContent = totalToday > 0 ? '계속 풀기 →' : '오늘의 퀴즈 시작하기';
 }
 
-// ── SELECT TODAY'S QUESTIONS ───────────────────────────
+// ── SELECT QUESTIONS (무한 출제, 중복 최소화) ───────────
 function selectQuestions() {
   const s = loadState();
   const td = today();
 
-  // 이어하기: 저장된 오늘 문제가 있으면 복원
-  if (s.date === td && s.questionsData && s.count < 10) {
+  // 이어하기: 현재 라운드가 진행 중이면 복원
+  if (s.date === td && s.questionsData && (s.roundIndex || 0) < 10) {
     todayQuestions = s.questionsData;
-    currentIndex   = s.count;
-    score          = s.score || 0;
-    answerLog      = s.answerLog || [];
+    currentIndex   = s.roundIndex || 0;
+    score          = s.roundScore  || 0;
+    answerLog      = s.answerLog   || [];
     return;
   }
 
-  // 새 날: 랜덤 10문제 선택 + 보기 섞기
-  const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
-  todayQuestions = shuffled.slice(0, 10).map(shuffleChoices);
-  currentIndex   = 0;
-  score          = 0;
-  answerLog      = [];
+  // 새 라운드: 아직 안 본 문제 먼저 선택
+  const isToday  = s.date === td;
+  let seenIds    = new Set(isToday ? (s.seenIds || []) : []);
+
+  let pool = allQuestions.filter(q => !seenIds.has(q.id));
+  if (pool.length < 10) {
+    // 모두 봤으면 초기화하고 전체에서 다시
+    seenIds = new Set();
+    pool = [...allQuestions];
+  }
+
+  const picked = pool.sort(() => Math.random() - 0.5).slice(0, 10);
+  todayQuestions = picked.map(shuffleChoices);
+  picked.forEach(q => seenIds.add(q.id));
+
+  currentIndex = 0;
+  score        = 0;
+  answerLog    = [];
 
   saveState({
-    ...s,
     date:          td,
     questionsData: todayQuestions,
-    count:         0,
-    score:         0,
+    roundIndex:    0,
+    roundScore:    0,
     answerLog:     [],
-    done:          false
+    seenIds:       [...seenIds],
+    totalToday:    isToday ? (s.totalToday || 0) : 0,
+    roundNum:      isToday ? (s.roundNum   || 0) : 0,
+    streak:        s.streak,
+    lastCompleteDate: s.lastCompleteDate
   });
 }
 
@@ -225,9 +229,9 @@ function onAnswer(chosen) {
   answerLog.push(correct);
 
   const s = loadState();
-  s.count     = currentIndex + 1;
-  s.score     = score;
-  s.answerLog = answerLog;
+  s.roundIndex = currentIndex + 1;
+  s.roundScore = score;
+  s.answerLog  = answerLog;
   saveState(s);
 
   setTimeout(() => showAnswer(correct), 650);
@@ -237,10 +241,9 @@ function onAnswer(chosen) {
 function showAnswer(correct) {
   const q = todayQuestions[currentIndex];
 
-  const banner = document.getElementById('result-banner');
   document.getElementById('result-icon').textContent = correct ? '🎊' : '💪';
   document.getElementById('result-text').textContent = correct ? '정답이에요!' : '아쉽지만 괜찮아요!';
-  banner.className = 'result-banner ' + (correct ? 'correct' : 'wrong');
+  document.getElementById('result-banner').className = 'result-banner ' + (correct ? 'correct' : 'wrong');
 
   const imgBox = document.getElementById('answer-img-box');
   const img    = document.getElementById('answer-image');
@@ -264,33 +267,44 @@ function showAnswer(correct) {
 function showComplete() {
   const s  = loadState();
   const td = today();
+
+  // 스트릭 업데이트
   let streak = s.streak || 0;
   if (s.lastCompleteDate === yesterday()) streak += 1;
   else if (s.lastCompleteDate !== td)     streak  = 1;
 
-  s.done = true; s.streak = streak; s.lastCompleteDate = td;
-  saveState(s);
+  const totalToday = (s.totalToday || 0) + 10;
+  const roundNum   = (s.roundNum   || 0) + 1;
 
-  document.getElementById('final-score').textContent  = score;
-  document.getElementById('streak-count').textContent = streak;
+  // 라운드 완료 상태 저장 (questionsData 비워서 다음엔 새 라운드로)
+  saveState({
+    ...s,
+    roundIndex:      10,
+    questionsData:   null,
+    totalToday,
+    roundNum,
+    streak,
+    lastCompleteDate: td
+  });
+
+  document.getElementById('final-score').textContent   = score;
+  document.getElementById('streak-count').textContent  = streak;
+  document.getElementById('complete-emoji').textContent = score === 10 ? '🏆' : '🎉';
 
   const msgs = [
     [10, '완벽해요! 정말 대단하세요! 🏆'],
     [8,  '훌륭해요! 많이 아시네요! 👏'],
-    [6,  '잘하셨어요! 내일도 화이팅! 🌸'],
+    [6,  '잘하셨어요! 오늘 ' + roundNum + '라운드 완료! 🌸'],
     [4,  '조금씩 늘고 있어요! 계속해요! 💪'],
     [0,  '내일은 더 잘하실 거예요! 🌱']
   ];
-  document.getElementById('score-msg').textContent    = msgs.find(([m]) => score >= m)[1];
-  document.getElementById('complete-emoji').textContent = score === 10 ? '🏆' : '🎉';
+  document.getElementById('score-msg').textContent = msgs.find(([m]) => score >= m)[1];
 
   showScreen('screen-complete');
 }
 
 // ── EVENT LISTENERS ────────────────────────────────────
 document.getElementById('start-btn').addEventListener('click', () => {
-  const s = loadState();
-  if (s.date === today() && s.done) return;
   selectQuestions();
   showQuiz();
 });
@@ -301,6 +315,13 @@ document.getElementById('next-btn').addEventListener('click', () => {
   else showQuiz();
 });
 
+// 계속 풀기: 새 라운드 바로 시작
+document.getElementById('continue-btn').addEventListener('click', () => {
+  selectQuestions();
+  showQuiz();
+});
+
+// 홈으로
 document.getElementById('home-btn').addEventListener('click', () => {
   renderHome();
   showScreen('screen-home');

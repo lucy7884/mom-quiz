@@ -79,17 +79,10 @@ html, body {
 }
 .progress-label { font-size: 20px; color: var(--muted); }
 .progress-count { font-size: 22px; font-weight: 800; color: var(--red); }
-.progress-track {
-  background: #F0E6D8;
-  border-radius: 10px;
-  height: 14px;
-  overflow: hidden;
-}
-.progress-fill {
-  height: 100%;
-  background: var(--red);
-  border-radius: 10px;
-  transition: width 0.5s ease;
+.round-info {
+  font-size: 19px;
+  color: var(--muted);
+  margin-top: 4px;
 }
 
 /* ── BUTTONS ── */
@@ -124,7 +117,7 @@ html, body {
   font-weight: 800;
   cursor: pointer;
   font-family: inherit;
-  margin-top: auto;
+  margin-top: 12px;
 }
 .btn-outline:active { background: #FFF0F2; }
 

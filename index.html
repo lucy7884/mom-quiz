@@ -19,7 +19,7 @@
     <div class="home-top">
       <div class="app-icon">📖</div>
       <h1 class="app-title">사자성어 퀴즈</h1>
-      <p class="app-subtitle">하루 10문제, 오늘도 배워봐요</p>
+      <p class="app-subtitle">오늘도 함께 배워봐요 📚</p>
     </div>
 
     <div class="streak-card">
@@ -31,12 +31,10 @@
 
     <div class="progress-card">
       <div class="progress-header">
-        <span class="progress-label">오늘 진행</span>
-        <span class="progress-count" id="home-progress-count">0 / 10</span>
+        <span class="progress-label">오늘 푼 문제</span>
+        <span class="progress-count" id="home-progress-count">0 문제</span>
       </div>
-      <div class="progress-track">
-        <div class="progress-fill" id="home-progress-bar" style="width:0%"></div>
-      </div>
+      <div class="round-info" id="home-round-info"></div>
     </div>
 
     <button class="btn-primary" id="start-btn">오늘의 퀴즈 시작하기</button>
@@ -93,7 +91,8 @@
       <div class="score-sub">/ 10 문제 정답</div>
     </div>
     <p class="score-msg" id="score-msg"></p>
-    <button class="btn-outline" id="home-btn">처음으로 돌아가기</button>
+    <button class="btn-primary" id="continue-btn">계속 풀기 →</button>
+    <button class="btn-outline" id="home-btn">오늘은 여기까지 🏠</button>
   </div>
 
   <script src="app.js"></script>
