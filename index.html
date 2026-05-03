@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#8B2635">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="사자성어">
+  <title>사자성어 퀴즈</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="img/logo3.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 홈 화면 -->
+  <div id="screen-home" class="screen">
+    <div class="home-top">
+      <div class="app-icon">📖</div>
+      <h1 class="app-title">사자성어 퀴즈</h1>
+      <p class="app-subtitle">하루 10문제, 오늘도 배워봐요</p>
+    </div>
+
+    <div class="streak-card">
+      <div class="streak-inner">
+        <span class="streak-number" id="streak-count">0</span>
+        <span class="streak-label">일 연속 🔥</span>
+      </div>
+    </div>
+
+    <div class="progress-card">
+      <div class="progress-header">
+        <span class="progress-label">오늘 진행</span>
+        <span class="progress-count" id="home-progress-count">0 / 10</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="home-progress-bar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="start-btn">오늘의 퀴즈 시작하기</button>
+  </div>
+
+  <!-- 퀴즈 화면 -->
+  <div id="screen-quiz" class="screen">
+    <div class="quiz-header">
+      <span class="quiz-step" id="quiz-current">1</span><span class="quiz-step-total"> / 10</span>
+      <div class="dots" id="progress-dots"></div>
+    </div>
+
+    <div class="img-box" id="quiz-img-box">
+      <img id="quiz-image" src="" alt="" onerror="this.parentElement.style.display='none'">
+    </div>
+
+    <div class="idiom-box">
+      <div class="idiom-kor" id="quiz-idiom"></div>
+      <div class="idiom-chi" id="quiz-chinese"></div>
+    </div>
+
+    <p class="question-text" id="quiz-question"></p>
+
+    <div class="choices" id="choices"></div>
+  </div>
+
+  <!-- 정답 화면 -->
+  <div id="screen-answer" class="screen">
+    <div class="result-banner" id="result-banner">
+      <div class="result-icon" id="result-icon"></div>
+      <div class="result-text" id="result-text"></div>
+    </div>
+
+    <div class="img-box" id="answer-img-box">
+      <img id="answer-image" src="" alt="" onerror="this.parentElement.style.display='none'">
+    </div>
+
+    <div class="explanation-card">
+      <div class="expl-idiom" id="answer-idiom"></div>
+      <div class="expl-meaning" id="answer-meaning"></div>
+      <div class="expl-divider"></div>
+      <div class="expl-story" id="answer-story"></div>
+    </div>
+
+    <button class="btn-primary" id="next-btn">다음 문제 →</button>
+  </div>
+
+  <!-- 완료 화면 -->
+  <div id="screen-complete" class="screen">
+    <div class="complete-emoji" id="complete-emoji">🎉</div>
+    <h2 class="complete-title">오늘도 잘하셨어요!</h2>
+    <div class="score-card">
+      <div class="score-big" id="final-score">0</div>
+      <div class="score-sub">/ 10 문제 정답</div>
+    </div>
+    <p class="score-msg" id="score-msg"></p>
+    <button class="btn-outline" id="home-btn">처음으로 돌아가기</button>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>

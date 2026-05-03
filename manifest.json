@@ -1,0 +1,22 @@
+{
+  "name": "사자성어 퀴즈",
+  "short_name": "사자성어",
+  "description": "하루 10문제 사자성어 퀴즈",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFBF5",
+  "theme_color": "#8B2635",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "img/logo3.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "img/logo3.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
