@@ -196,39 +196,63 @@ html, body {
 .choice-btn.wrong   { background: #FFEBEE; border-color: var(--wrong); color: var(--wrong); }
 .choice-btn:disabled { cursor: default; }
 
-/* ── ANSWER: 정답 화면 ── */
+/* ── 다음 문제 화살표 버튼 (우상단 고정) ── */
+.next-btn-arrow {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--red);
+  color: white;
+  font-size: 20px;
+  font-weight: 900;
+  border: none;
+  cursor: pointer;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.next-btn-arrow:active { background: var(--red-dark); transform: scale(0.93); }
+
+/* ── ANSWER: 정답 화면 — 전체 스크롤 허용 ── */
+#screen-answer {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .result-banner {
-  width: 100%;
-  border-radius: 12px;
-  padding: 10px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 10px;
   margin-bottom: 8px;
   flex-shrink: 0;
 }
 .result-banner.correct { background: #E8F5E9; }
 .result-banner.wrong   { background: #FFEBEE; }
-.result-icon { font-size: 30px; }
-.result-text { font-size: 20px; font-weight: 900; }
+.result-icon { font-size: 18px; }
+.result-text { font-size: 15px; font-weight: 800; }
 .result-banner.correct .result-text { color: var(--green); }
 .result-banner.wrong   .result-text { color: var(--wrong); }
 
-/* ── EXPLANATION: 이 카드만 내부 스크롤 허용 ── */
+/* ── EXPLANATION: 내부 스크롤 없이 자연스럽게 ── */
 .explanation-card {
   width: 100%;
   background: var(--card);
   border: 2px solid var(--border);
   border-radius: 14px;
   padding: 14px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   margin-bottom: 8px;
 }
 .expl-idiom   { font-size: 20px; font-weight: 900; color: var(--red); text-align: center; margin-bottom: 4px; }
-.expl-meaning { font-size: 15px; font-weight: 700; text-align: center; margin-bottom: 10px; }
+.expl-meaning { font-size: 14px; font-weight: 700; text-align: center; margin-bottom: 10px; color: var(--muted); }
 .expl-divider { height: 1px; background: var(--border); margin-bottom: 10px; }
-.expl-story   { font-size: 14px; line-height: 1.8; color: var(--muted); word-break: keep-all; }
+.expl-story   { font-size: 13px; line-height: 1.85; color: var(--muted); word-break: keep-all; }
 
 /* ── COMPLETE ── */
 .complete-emoji {
