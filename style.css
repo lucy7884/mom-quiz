@@ -196,27 +196,23 @@ html, body {
 .choice-btn.wrong   { background: #FFEBEE; border-color: var(--wrong); color: var(--wrong); }
 .choice-btn:disabled { cursor: default; }
 
-/* ── 다음 문제 화살표 버튼 (우상단 고정) ── */
-.next-btn-arrow {
-  position: fixed;
-  top: 14px;
-  right: 16px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+/* ── 다음문제 버튼 ── */
+.btn-next {
+  width: 100%;
   background: var(--red);
   color: white;
-  font-size: 20px;
-  font-weight: 900;
   border: none;
+  border-radius: 10px;
+  padding: 13px 16px;
+  font-size: 16px;
+  font-weight: 800;
   cursor: pointer;
-  z-index: 999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  font-family: inherit;
+  flex-shrink: 0;
+  margin-top: 4px;
+  margin-bottom: 8px;
 }
-.next-btn-arrow:active { background: var(--red-dark); transform: scale(0.93); }
+.btn-next:active { background: var(--red-dark); }
 
 /* ── ANSWER: 정답 화면 — 전체 스크롤 허용 ── */
 #screen-answer {

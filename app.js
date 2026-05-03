@@ -258,7 +258,6 @@ function showAnswer(correct) {
   document.getElementById('answer-idiom').textContent   = q.idiom + '  ' + q.chinese;
   document.getElementById('answer-meaning').textContent = '💡 ' + q.meaning;
   document.getElementById('answer-story').textContent   = q.story;
-  document.getElementById('next-btn').textContent = (currentIndex === 9) ? '결과 보기 🎉' : '다음 문제 →';
 
   showScreen('screen-answer');
 }
